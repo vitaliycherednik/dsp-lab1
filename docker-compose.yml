@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Балансувальник для споживачів
+  consumer_balancer:
+    image: nginx:latest
+    volumes:
+      - ./nginx/consumer_balancer.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - consumer1
+      - consumer2
+    networks:
+      - frontend_network
+
+  # Балансувальник для постачальників
+  provider_balancer:
+    image: nginx:latest
+    volumes:
+      - ./nginx/provider_balancer.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8090:80"
+    depends_on:
+      - provider1
+      - provider2
+    networks:
+      - backend_network
+      - frontend_network
+
+  # Споживачі
+  consumer1:
+    build:
+      context: .
+      dockerfile: consumer_service/Dockerfile
+    environment:
+      - PROVIDER_URL=http://provider_balancer:80/compute
+      - SECRET_KEY=your_secret_key
+    networks:
+      - frontend_network
+
+  consumer2:
+    build:
+      context: .
+      dockerfile: consumer_service/Dockerfile
+    environment:
+      - PROVIDER_URL=http://provider_balancer:80/compute
+      - SECRET_KEY=your_secret_key
+    networks:
+      - frontend_network
+
+  # Постачальники
+  provider1:
+    build:
+      context: .
+      dockerfile: provider_service/Dockerfile
+    environment:
+      - SECRET_KEY=your_secret_key
+    networks:
+      - backend_network
+
+  provider2:
+    build:
+      context: .
+      dockerfile: provider_service/Dockerfile
+    environment:
+      - SECRET_KEY=your_secret_key
+    networks:
+      - backend_network
+
+networks:
+  frontend_network:
+    driver: bridge
+  backend_network:
+    driver: bridge
